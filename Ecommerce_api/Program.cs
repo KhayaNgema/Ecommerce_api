@@ -247,27 +247,13 @@ app.UseRequestLocalization(new RequestLocalizationOptions
 app.UseStaticFiles();
 
 // Optional: Hangfire Dashboard
-/*
+
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
     Authorization = new[] { new HangfireAuthorizationFilter() }
 });
 
-RecurringJob.AddOrUpdate<FixtureService>(
-    "schedule-fixtures",
-    service => service.ScheduleFixturesAsync(),
-    Cron.Weekly(DayOfWeek.Monday, 0, 0));
 
-RecurringJob.AddOrUpdate<SubscriptionCheckerService>(
-    "check-expired-subscriptions",
-    service => service.CheckExpiredSubscriptions(),
-    Cron.Minutely);
-
-RecurringJob.AddOrUpdate<CompetitionService>(
-    "end-monthly-competition",
-    service => service.EndCurrentCompetitionAndStartNewOne(),
-    "59 23 L * *");
-*/
 
 app.MapControllerRoute(
     name: "default",

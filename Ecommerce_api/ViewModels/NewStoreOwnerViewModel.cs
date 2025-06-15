@@ -28,7 +28,7 @@ namespace Ecommerce_api.ViewModels
 
         public IFormFile? ProfilePicture { get; set; }
 
-        public ICollection<Store> Stores { get; set; }
+        public ICollection<int> Stores { get; set; } = new List<int>();
 
         public Gender? Gender { get; set; }
 

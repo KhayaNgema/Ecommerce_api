@@ -172,7 +172,7 @@ namespace Ecommerce_api.Controllers
         [Authorize]
         [HttpPost("newStoreOwner")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> NewStoreOwner([FromForm] NewStoreOwnerViewModel viewModel, string returnUrl = null)
+        public async Task<IActionResult> NewStoreOwner([FromForm] NewStoreOwnerViewModel viewModel)
         {
             try
             {
@@ -187,7 +187,6 @@ namespace Ecommerce_api.Controllers
                 if (existingUserByEmail != null)
                 {
                     ModelState.AddModelError("Input.Email", "An account with this email address already exists.");
-
                     return BadRequest(ModelState);
                 }
 
@@ -195,6 +194,7 @@ namespace Ecommerce_api.Controllers
 
                 var storeOwner = new StoreOwner
                 {
+                    Title = viewModel.Title,
                     FirstName = viewModel.FirstName,
                     LastName = viewModel.LastName,
                     DateOfBirth = viewModel.DateOfBirth,
@@ -209,11 +209,30 @@ namespace Ecommerce_api.Controllers
                     IsFirstTimeLogin = true,
                     AccessFailedCount = 0,
                     Address = string.Join(", ", new[] {
-                              viewModel.StreetNumber, viewModel.City_town, viewModel.Province.ToString(),viewModel.Zip_code,viewModel.Country
-                                                       }.Where(x => !string.IsNullOrWhiteSpace(x))),
+                viewModel.StreetNumber,
+                viewModel.Surbub,
+                viewModel.City_town,
+                viewModel.Province.ToString(),
+                viewModel.Zip_code,
+                viewModel.Country
+            }.Where(x => !string.IsNullOrWhiteSpace(x))),
                     Gender = viewModel.Gender,
                     IsDeleted = false,
+                    Stores = new List<Store>()
                 };
+
+
+                if (viewModel.Stores != null && viewModel.Stores.Any())
+                {
+                    var stores = await _context.Stores
+                        .Where(s => viewModel.Stores.Contains(s.StoreId))
+                        .ToListAsync();
+
+                    foreach (var store in stores)
+                    {
+                        storeOwner.Stores.Add(store);
+                    }
+                }
 
                 if (viewModel.ProfilePicture != null && viewModel.ProfilePicture.Length > 0)
                 {
@@ -236,7 +255,7 @@ namespace Ecommerce_api.Controllers
                     var callbackUrl = Url.Page(
                         "/Account/ConfirmEmail",
                         pageHandler: null,
-                        values: new { area = "Identity", userId = storeOwner.Id, code = code, returnUrl = returnUrl },
+                        values: new { area = "Identity", userId = storeOwner.Id, code = code},
                         protocol: Request.Scheme);
 
                     string accountCreationEmailBody = $"Hello {storeOwner.FirstName},<br><br>";
@@ -255,15 +274,21 @@ namespace Ecommerce_api.Controllers
 
                     BackgroundJob.Enqueue(() => _emailService.SendEmailAsync(storeOwner.Email, "Confirm Your Email Address", emailConfirmationEmailBody, "Ecommerce"));
 
-                    /*                    await _activityLogger.Log($"Added {Input.FirstName} {Input.LastName} as MediCare {doctor.Specialization}", userId);
-                    */
-                    TempData["Message"] = $"{storeOwner.FirstName} {storeOwner.LastName}  has been successfully added as {viewModel.Stores} Store Owner";
-
+                    TempData["Message"] = $"{storeOwner.FirstName} {storeOwner.LastName} has been successfully added as Store Owner";
 
                     return Ok(storeOwner);
                 }
+                else
+                {
+                    // Handle errors creating the user
+                    foreach (var error in result.Errors)
+                    {
+                        ModelState.AddModelError(string.Empty, error.Description);
+                    }
+                    return BadRequest(ModelState);
+                }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return new JsonResult(new
                 {
@@ -276,9 +301,8 @@ namespace Ecommerce_api.Controllers
                     }
                 });
             }
-
-            return BadRequest();
         }
+
 
         private IUserEmailStore<UserBaseModel> GetEmailStore()
         {
