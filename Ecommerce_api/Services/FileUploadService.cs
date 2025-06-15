@@ -7,9 +7,9 @@ namespace Ecommerce_api.Services
 {
     public class FileUploadService
     {
-/*        private readonly string _uploadsDirectory = @"C:\inetpub\UploadedFiles";*/
+        private readonly string _uploadsDirectory = @"C:\inetpub\UploadedFiles";
 
-        private readonly string _uploadsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Files");
+        /*        private readonly string _uploadsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Files");*/
 
         public FileUploadService()
         {

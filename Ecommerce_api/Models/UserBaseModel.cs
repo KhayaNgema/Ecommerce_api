@@ -34,5 +34,13 @@ namespace Ecommerce_api.Models
         public bool IsFirstTimeLogin { get; set; }
 
         public string Address { get; set; }
+
+        public Gender? Gender { get; set; }
+
+        public Ethnicity? Ethnicity { get; set; }
+
+        public Title? Title { get; set; }
+
+        public HomeLanguage? HomeLanguage { get; set; }
     }
 }

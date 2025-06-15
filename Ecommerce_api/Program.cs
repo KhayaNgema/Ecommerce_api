@@ -17,6 +17,8 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.AspNetCore.Localization;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -113,17 +115,17 @@ builder.Services.AddScoped<IActivityLogger, ActivityLogger>();
 builder.Services.AddScoped<FileUploadService>();
 builder.Services.AddScoped<EncryptionService>();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<RandomPasswordGeneratorService>();
 builder.Services.AddScoped<RequestLogService>();
 builder.Services.AddHttpClient<DeviceInfoService>();
 builder.Services.AddHttpClient();
 
-// SignalR
 builder.Services.AddSignalR(options =>
 {
     options.EnableDetailedErrors = false;
 });
 
-// ✅ CORS — Allow all origins
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
@@ -136,7 +138,7 @@ builder.Services.AddCors(options =>
         });
 });
 
-// Hangfire
+
 builder.Services.AddHangfire(config => config
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
     .UseSimpleAssemblyNameTypeSerializer()
@@ -153,12 +155,12 @@ builder.Services.AddHangfire(config => config
     }));
 builder.Services.AddHangfireServer();
 
-// MVC + Razor Pages
+
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 builder.Services.AddHttpContextAccessor();
 
-// ✅ Swagger (Always enabled)
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Ecommerce API", Version = "v1" });
@@ -191,10 +193,10 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenAnyIP(2001); // HTTP
+    options.ListenAnyIP(2001); 
     options.ListenLocalhost(7135, listenOptions =>
     {
-        listenOptions.UseHttps(); // ✅ Enable HTTPS explicitly
+        listenOptions.UseHttps(); 
     });
 });
 
@@ -210,7 +212,7 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-// ---------- Middleware ----------
+
 SetCulture("en-US");
 
 app.UseHttpsRedirection();
@@ -222,7 +224,6 @@ app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Optional: Secure cookie
 app.Use(async (context, next) =>
 {
     context.Response.Cookies.Append("StrictlyNecessaryCookie", "Value", new CookieOptions
@@ -232,6 +233,15 @@ app.Use(async (context, next) =>
         SameSite = SameSiteMode.Strict
     });
     await next.Invoke();
+});
+
+var defaultCulture = new CultureInfo("en-US");
+
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture(defaultCulture),
+    SupportedCultures = new List<CultureInfo> { defaultCulture },
+    SupportedUICultures = new List<CultureInfo> { defaultCulture }
 });
 
 app.UseStaticFiles();
@@ -271,7 +281,7 @@ app.MapControllerRoute(
 
 app.MapRazorPages();
 
-// Initialize roles and default users
+
 using (var scope = app.Services.CreateScope())
 {
     await scope.ServiceProvider.CreateRolesAndDefaultUser();
@@ -279,7 +289,6 @@ using (var scope = app.Services.CreateScope())
 
 app.Run();
 
-// ---------- Culture Setup ----------
 void SetCulture(string cultureCode)
 {
     var culture = CultureInfo.CreateSpecificCulture(cultureCode);

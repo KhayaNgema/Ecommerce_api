@@ -3,10 +3,15 @@ using Ecommerce_api.Data;
 using Ecommerce_api.Models;
 using Ecommerce_api.Services;
 using Ecommerce_api.ViewModels;
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Encodings.Web;
+using System.Text;
 
 namespace Ecommerce_api.Controllers
 {
@@ -20,11 +25,19 @@ namespace Ecommerce_api.Controllers
         private readonly IProductService _productService;
         private readonly RequestLogService _requestLogService;
         private readonly EncryptionService _encryptionService;
-
+        private readonly IUserStore<UserBaseModel> _userStore;
+        private readonly EmailService _emailService;
+        private readonly RandomPasswordGeneratorService _passwordGenerator;
+        private readonly IUserEmailStore<UserBaseModel> _emailStore;
 
         public StoresController(Ecommerce_apiDBContext context, UserManager<UserBaseModel> userManager,
-            FileUploadService fileUploadService, RequestLogService requestLogService, IProductService productService,
-            EncryptionService encryptionService)
+            FileUploadService fileUploadService, 
+            RequestLogService requestLogService, 
+            IProductService productService,
+            EmailService emailService,
+            RandomPasswordGeneratorService passwordGenerator,
+            EncryptionService encryptionService,
+            IUserStore<UserBaseModel> userStore)
         {
             _context = context;
             _userManager = userManager;
@@ -32,6 +45,39 @@ namespace Ecommerce_api.Controllers
             _requestLogService = requestLogService;
             _productService = productService;
             _encryptionService = encryptionService;
+            _userStore = userStore;
+            _emailService = emailService;
+            _emailStore = GetEmailStore();
+            _passwordGenerator = passwordGenerator;
+        }
+
+
+        [Authorize]
+        [HttpGet("storeOwners")]
+        public async Task<IActionResult> StoreOwners()
+        {
+            var storeOwners = await _context.StoreOwners
+                .Where(so => !so.IsDeleted)
+                .OrderByDescending(so => so.CreatedDateTime)
+                .ToListAsync();
+
+            var result = storeOwners.Select(so => new
+            {
+                so.Id,
+                so.FirstName,
+                so.LastName,
+                so.PhoneNumber,
+                so.ProfilePicture,
+                so.Email,
+                so.IsActive,
+                so.IsSuspended,
+                so.CreatedDateTime,
+                so.ModifiedDateTime,
+                so.CreatedBy,
+                so.ModifiedBy
+            });
+
+            return Ok(result);
         }
 
         [Authorize]
@@ -42,6 +88,7 @@ namespace Ecommerce_api.Controllers
                 .Where(s => !s.IsDeleted)
                 .Include(s => s.CreatedBy)
                 .Include(s => s.ModifiedBy)
+                .OrderByDescending(s => s.CreatedDateTime)
                 .ToListAsync();
 
             var result = stores.Select(s => new
@@ -77,6 +124,7 @@ namespace Ecommerce_api.Controllers
 
         [Authorize]
         [HttpPost("newStore")]
+        [Consumes("multipart/form-data")]
         public async Task<IActionResult> CreateStore([FromForm] NewStoreViewModel viewModel)
         {
             if (!ModelState.IsValid)
@@ -120,5 +168,125 @@ namespace Ecommerce_api.Controllers
             return Ok(store);
         }
 
+
+        [Authorize]
+        [HttpPost("newStoreOwner")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> NewStoreOwner([FromForm] NewStoreOwnerViewModel viewModel, string returnUrl = null)
+        {
+            try
+            {
+                var existingUserByPhoneNumber = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == viewModel.PhoneNumber);
+                if (existingUserByPhoneNumber != null)
+                {
+                    ModelState.AddModelError("Input.PhoneNumber", "An account with this phone number already exists.");
+                    return BadRequest(ModelState);
+                }
+
+                var existingUserByEmail = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == viewModel.Email);
+                if (existingUserByEmail != null)
+                {
+                    ModelState.AddModelError("Input.Email", "An account with this email address already exists.");
+
+                    return BadRequest(ModelState);
+                }
+
+                var user = await _userManager.GetUserAsync(User);
+
+                var storeOwner = new StoreOwner
+                {
+                    FirstName = viewModel.FirstName,
+                    LastName = viewModel.LastName,
+                    DateOfBirth = viewModel.DateOfBirth,
+                    Email = viewModel.Email,
+                    PhoneNumber = viewModel.PhoneNumber,
+                    CreatedBy = $"{user.FirstName} {user.LastName}",
+                    CreatedDateTime = DateTime.Now,
+                    ModifiedBy = $"{user.FirstName} {user.LastName}",
+                    ModifiedDateTime = DateTime.Now,
+                    IsActive = true,
+                    IsSuspended = false,
+                    IsFirstTimeLogin = true,
+                    AccessFailedCount = 0,
+                    Address = string.Join(", ", new[] {
+                              viewModel.StreetNumber, viewModel.City_town, viewModel.Province.ToString(),viewModel.Zip_code,viewModel.Country
+                                                       }.Where(x => !string.IsNullOrWhiteSpace(x))),
+                    Gender = viewModel.Gender,
+                    IsDeleted = false,
+                };
+
+                if (viewModel.ProfilePicture != null && viewModel.ProfilePicture.Length > 0)
+                {
+                    var playerProfilePicturePath = await _fileUploadService.UploadFileAsync(viewModel.ProfilePicture);
+                    storeOwner.ProfilePicture = playerProfilePicturePath;
+                }
+
+                await _userStore.SetUserNameAsync(storeOwner, viewModel.Email, CancellationToken.None);
+                await _emailStore.SetEmailAsync(storeOwner, viewModel.Email, CancellationToken.None);
+
+                string randomPassword = _passwordGenerator.GenerateRandomPassword();
+                var result = await _userManager.CreateAsync(storeOwner, randomPassword);
+
+                if (result.Succeeded)
+                {
+                    await _userManager.AddToRoleAsync(storeOwner, "Store Owner");
+
+                    var code = await _userManager.GenerateEmailConfirmationTokenAsync(storeOwner);
+                    code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+                    var callbackUrl = Url.Page(
+                        "/Account/ConfirmEmail",
+                        pageHandler: null,
+                        values: new { area = "Identity", userId = storeOwner.Id, code = code, returnUrl = returnUrl },
+                        protocol: Request.Scheme);
+
+                    string accountCreationEmailBody = $"Hello {storeOwner.FirstName},<br><br>";
+                    accountCreationEmailBody += $"Welcome to Ecommerce!<br><br>";
+                    accountCreationEmailBody += $"You have been successfully added as Store Owner. Below are your login credentials:<br><br>";
+                    accountCreationEmailBody += $"Email: {storeOwner.Email}<br>";
+                    accountCreationEmailBody += $"Password: {randomPassword}<br><br>";
+                    accountCreationEmailBody += $"Please note that we have sent you two emails, including this one. You need to open the other email to confirm your email address before you can log into the system.<br><br>";
+                    accountCreationEmailBody += $"Thank you!";
+
+                    BackgroundJob.Enqueue(() => _emailService.SendEmailAsync(storeOwner.Email, "Welcome to Ecommerce", accountCreationEmailBody, "Ecommerce"));
+
+                    string emailConfirmationEmailBody = $"Hello {storeOwner.FirstName},<br><br>";
+                    emailConfirmationEmailBody += $"Please confirm your email by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.<br><br>";
+                    emailConfirmationEmailBody += $"Thank you!";
+
+                    BackgroundJob.Enqueue(() => _emailService.SendEmailAsync(storeOwner.Email, "Confirm Your Email Address", emailConfirmationEmailBody, "Ecommerce"));
+
+                    /*                    await _activityLogger.Log($"Added {Input.FirstName} {Input.LastName} as MediCare {doctor.Specialization}", userId);
+                    */
+                    TempData["Message"] = $"{storeOwner.FirstName} {storeOwner.LastName}  has been successfully added as {viewModel.Stores} Store Owner";
+
+
+                    return Ok(storeOwner);
+                }
+            }
+            catch(Exception ex)
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = "Failed to onboard store owner: " + ex.Message,
+                    errorDetails = new
+                    {
+                        innerException = ex.InnerException?.Message,
+                        stackTrace = ex.StackTrace
+                    }
+                });
+            }
+
+            return BadRequest();
+        }
+
+        private IUserEmailStore<UserBaseModel> GetEmailStore()
+        {
+            if (!_userManager.SupportsUserEmail)
+            {
+                throw new NotSupportedException("The default UI requires a user store with email support.");
+            }
+            return (IUserEmailStore<UserBaseModel>)_userStore;
+        }
     }
 }
