@@ -2,6 +2,7 @@
 {
     public class StoreOwner : UserBaseModel
     {
-        public virtual ICollection<Store> Stores { get; set; }
+        public ICollection<StoreOwnerStore> StoreOwnerStores { get; set; } = new List<StoreOwnerStore>();
     }
 }
+

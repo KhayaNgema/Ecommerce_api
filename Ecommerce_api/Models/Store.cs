@@ -40,6 +40,8 @@ namespace Ecommerce_api.Models
         [ForeignKey("ModifiedById")]
         public string ModifiedById { get; set; }
         public virtual UserBaseModel ModifiedBy { get; set; }
+
+        public ICollection<StoreOwnerStore> StoreOwnerStores { get; set; } = new List<StoreOwnerStore>();
     }
 
     public enum StoreType

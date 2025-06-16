@@ -12,10 +12,36 @@ public class Ecommerce_apiDBContext : IdentityDbContext<UserBaseModel>
     {
     }
 
-    protected override void OnModelCreating(ModelBuilder builder)
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        base.OnModelCreating(builder);
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<StoreOwnerStore>()
+            .HasKey(ss => new { ss.StoreOwnerId, ss.StoreId });
+
+        modelBuilder.Entity<StoreOwnerStore>()
+            .HasOne(ss => ss.StoreOwner)
+            .WithMany(so => so.StoreOwnerStores)
+            .HasForeignKey(ss => ss.StoreOwnerId);
+
+        modelBuilder.Entity<StoreOwnerStore>()
+            .HasOne(ss => ss.Store)
+            .WithMany(s => s.StoreOwnerStores)
+            .HasForeignKey(ss => ss.StoreId);
+
+        modelBuilder.Entity<Store>()
+            .HasOne(s => s.CreatedBy)
+            .WithMany()
+            .HasForeignKey(s => s.CreatedById)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        modelBuilder.Entity<Store>()
+            .HasOne(s => s.ModifiedBy)
+            .WithMany()
+            .HasForeignKey(s => s.ModifiedById)
+            .OnDelete(DeleteBehavior.NoAction);
     }
+
 
     public DbSet<Ecommerce_api.Models.RequestLog> RequestLogs { get; set; }
 
@@ -42,5 +68,7 @@ public class Ecommerce_apiDBContext : IdentityDbContext<UserBaseModel>
     public DbSet<Ecommerce_api.Models.Store> Stores { get; set; }
 
     public DbSet<Ecommerce_api.Models.StoreOwner> StoreOwners { get; set; }
+
+    public DbSet<Ecommerce_api.Models.StoreOwnerStore> StoreOwnerStores { get; set; }
 
 }

@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Encodings.Web;
 using System.Text;
+using Ecommerce_api.DTOs;
+using System.Web;
 
 namespace Ecommerce_api.Controllers
 {
@@ -29,9 +31,12 @@ namespace Ecommerce_api.Controllers
         private readonly EmailService _emailService;
         private readonly RandomPasswordGeneratorService _passwordGenerator;
         private readonly IUserEmailStore<UserBaseModel> _emailStore;
+        private readonly ILogger<StoresController> _logger;
 
-        public StoresController(Ecommerce_apiDBContext context, UserManager<UserBaseModel> userManager,
-            FileUploadService fileUploadService, 
+        public StoresController(Ecommerce_apiDBContext context, 
+            UserManager<UserBaseModel> userManager,
+            FileUploadService fileUploadService,
+            ILogger<StoresController> logger,
             RequestLogService requestLogService, 
             IProductService productService,
             EmailService emailService,
@@ -49,7 +54,59 @@ namespace Ecommerce_api.Controllers
             _emailService = emailService;
             _emailStore = GetEmailStore();
             _passwordGenerator = passwordGenerator;
+            _logger = logger;
         }
+
+
+        [Authorize]
+        [HttpGet("myStores")]
+        public async Task<IActionResult> MyStores()
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            var myStoreIds = await _context.StoreOwnerStores
+                .Where(sos => sos.StoreOwnerId == user.Id)
+                .Select(sos => sos.StoreId)
+                .ToListAsync();
+
+            var stores = await _context.Stores
+                .Where(s => !s.IsDeleted && myStoreIds.Contains(s.StoreId))
+                .Include(s => s.CreatedBy)
+                .Include(s => s.ModifiedBy)
+                .OrderByDescending(s => s.CreatedDateTime)
+                .ToListAsync();
+
+            var result = stores.Select(s => new
+            {
+                s.StoreId,
+                s.StoreName,
+                s.StoreLogo,
+                s.StoreCode,
+                s.StoreType,
+                s.IsActive,
+                s.HasPaid,
+                s.CreatedDateTime,
+                s.ModifiedDateTime,
+
+                CreatedBy = s.CreatedBy == null ? null : new
+                {
+                    s.CreatedBy.Id,
+                    FullName = s.CreatedBy.FirstName + " " + s.CreatedBy.LastName,
+                    s.CreatedBy.Email
+                },
+
+                ModifiedBy = s.ModifiedBy == null ? null : new
+                {
+                    s.ModifiedBy.Id,
+                    FullName = s.ModifiedBy.FirstName + " " + s.ModifiedBy.LastName,
+                    s.ModifiedBy.Email
+                }
+            });
+
+            return Ok(result);
+        }
+
+
 
 
         [Authorize]
@@ -122,6 +179,58 @@ namespace Ecommerce_api.Controllers
         }
 
 
+
+        [Authorize]
+        [HttpGet("storeDetails")]
+        public async Task<IActionResult> StoreDetails(string storeId)
+        {
+            var decodedStoreId = HttpUtility.UrlDecode(storeId);
+            var decryptedStoreId = _encryptionService.DecryptToInt(decodedStoreId);
+
+            var store = await _context.Stores
+                .Include(s => s.CreatedBy)
+                .Include(s => s.ModifiedBy)
+                .FirstOrDefaultAsync(s => s.StoreId == decryptedStoreId);
+
+            if (store == null)
+                return NotFound("Store not found");
+
+            var result = new
+            {
+                StoreId = store.StoreId,
+                StoreName = store.StoreName,
+                StoreLogo = store.StoreLogo,
+                StoreCode = store.StoreCode,
+                StoreType = store.StoreType,
+                SignedContract = store.SignedContract,
+                IsSuspended = store.IsSuspended,
+                IsDeleted = store.IsDeleted,
+                IsActive = store.IsActive,
+                HasPaid = store.HasPaid,
+                CreatedDateTime = store.CreatedDateTime,
+                ModifiedDateTime = store.ModifiedDateTime,
+
+                CreatedBy = store.CreatedBy == null ? null : new
+                {
+                    store.CreatedBy.Id,
+                    FullName = store.CreatedBy.FirstName + " " + store.CreatedBy.LastName,
+                    store.CreatedBy.Email
+                },
+
+                ModifiedBy = store.ModifiedBy == null ? null : new
+                {
+                    store.ModifiedBy.Id,
+                    FullName = store.ModifiedBy.FirstName + " " + store.ModifiedBy.LastName,
+                    store.ModifiedBy.Email
+                }
+            };
+
+            return Ok(result);
+        }
+
+
+
+
         [Authorize]
         [HttpPost("newStore")]
         [Consumes("multipart/form-data")]
@@ -190,7 +299,7 @@ namespace Ecommerce_api.Controllers
                     return BadRequest(ModelState);
                 }
 
-                var user = await _userManager.GetUserAsync(User);
+                var currentUser = await _userManager.GetUserAsync(User);
 
                 var storeOwner = new StoreOwner
                 {
@@ -200,9 +309,9 @@ namespace Ecommerce_api.Controllers
                     DateOfBirth = viewModel.DateOfBirth,
                     Email = viewModel.Email,
                     PhoneNumber = viewModel.PhoneNumber,
-                    CreatedBy = $"{user.FirstName} {user.LastName}",
+                    CreatedBy = $"{currentUser.FirstName} {currentUser.LastName}",
                     CreatedDateTime = DateTime.Now,
-                    ModifiedBy = $"{user.FirstName} {user.LastName}",
+                    ModifiedBy = $"{currentUser.FirstName} {currentUser.LastName}",
                     ModifiedDateTime = DateTime.Now,
                     IsActive = true,
                     IsSuspended = false,
@@ -217,27 +326,13 @@ namespace Ecommerce_api.Controllers
                 viewModel.Country
             }.Where(x => !string.IsNullOrWhiteSpace(x))),
                     Gender = viewModel.Gender,
-                    IsDeleted = false,
-                    Stores = new List<Store>()
+                    IsDeleted = false
                 };
-
-
-                if (viewModel.Stores != null && viewModel.Stores.Any())
-                {
-                    var stores = await _context.Stores
-                        .Where(s => viewModel.Stores.Contains(s.StoreId))
-                        .ToListAsync();
-
-                    foreach (var store in stores)
-                    {
-                        storeOwner.Stores.Add(store);
-                    }
-                }
 
                 if (viewModel.ProfilePicture != null && viewModel.ProfilePicture.Length > 0)
                 {
-                    var playerProfilePicturePath = await _fileUploadService.UploadFileAsync(viewModel.ProfilePicture);
-                    storeOwner.ProfilePicture = playerProfilePicturePath;
+                    var profilePicturePath = await _fileUploadService.UploadFileAsync(viewModel.ProfilePicture);
+                    storeOwner.ProfilePicture = profilePicturePath;
                 }
 
                 await _userStore.SetUserNameAsync(storeOwner, viewModel.Email, CancellationToken.None);
@@ -248,6 +343,25 @@ namespace Ecommerce_api.Controllers
 
                 if (result.Succeeded)
                 {
+                    if (viewModel.Stores != null && viewModel.Stores.Any())
+                    {
+                        foreach (var storeId in viewModel.Stores)
+                        {
+                            _logger.LogInformation("Creating join for StoreOwnerId: {StoreOwnerId}, StoreId: {StoreId}", storeOwner.Id, storeId);
+
+                            var joinEntity = new StoreOwnerStore
+                            {
+                                StoreOwnerId = storeOwner.Id,
+                                StoreId = storeId
+                            };
+
+                            _context.Add(joinEntity);
+                        }
+
+                        await _context.SaveChangesAsync();
+                    }
+
+
                     await _userManager.AddToRoleAsync(storeOwner, "Store Owner");
 
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(storeOwner);
@@ -255,7 +369,7 @@ namespace Ecommerce_api.Controllers
                     var callbackUrl = Url.Page(
                         "/Account/ConfirmEmail",
                         pageHandler: null,
-                        values: new { area = "Identity", userId = storeOwner.Id, code = code},
+                        values: new { area = "Identity", userId = storeOwner.Id, code = code },
                         protocol: Request.Scheme);
 
                     string accountCreationEmailBody = $"Hello {storeOwner.FirstName},<br><br>";
@@ -274,13 +388,18 @@ namespace Ecommerce_api.Controllers
 
                     BackgroundJob.Enqueue(() => _emailService.SendEmailAsync(storeOwner.Email, "Confirm Your Email Address", emailConfirmationEmailBody, "Ecommerce"));
 
-                    TempData["Message"] = $"{storeOwner.FirstName} {storeOwner.LastName} has been successfully added as Store Owner";
+                    var dto = new StoreOwnerDto
+                    {
+                        Id = storeOwner.Id,
+                        FirstName = storeOwner.FirstName,
+                        LastName = storeOwner.LastName,
+                        Email = storeOwner.Email
+                    };
+                    return Ok(dto);
 
-                    return Ok(storeOwner);
                 }
                 else
                 {
-                    // Handle errors creating the user
                     foreach (var error in result.Errors)
                     {
                         ModelState.AddModelError(string.Empty, error.Description);

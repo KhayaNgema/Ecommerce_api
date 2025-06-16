@@ -4,6 +4,7 @@ using Ecommerce_api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ecommerce_api.Migrations
 {
     [DbContext(typeof(Ecommerce_apiDBContext))]
-    partial class Ecommerce_apiDBContextModelSnapshot : ModelSnapshot
+    [Migration("20250616083654_Re_Add_SToreToUsersConstraints")]
+    partial class Re_Add_SToreToUsersConstraints
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -464,6 +467,9 @@ namespace Ecommerce_api.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("StoreOwnerId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<int>("StoreType")
                         .HasColumnType("int");
 
@@ -473,22 +479,9 @@ namespace Ecommerce_api.Migrations
 
                     b.HasIndex("ModifiedById");
 
+                    b.HasIndex("StoreOwnerId");
+
                     b.ToTable("Stores");
-                });
-
-            modelBuilder.Entity("Ecommerce_api.Models.StoreOwnerStore", b =>
-                {
-                    b.Property<string>("StoreOwnerId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int>("StoreId")
-                        .HasColumnType("int");
-
-                    b.HasKey("StoreOwnerId", "StoreId");
-
-                    b.HasIndex("StoreId");
-
-                    b.ToTable("StoreOwnerStores");
                 });
 
             modelBuilder.Entity("Ecommerce_api.Models.UserBaseModel", b =>
@@ -947,26 +940,14 @@ namespace Ecommerce_api.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
+                    b.HasOne("Ecommerce_api.Models.StoreOwner", "StoreOwner")
+                        .WithMany("Stores")
+                        .HasForeignKey("StoreOwnerId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.Navigation("CreatedBy");
 
                     b.Navigation("ModifiedBy");
-                });
-
-            modelBuilder.Entity("Ecommerce_api.Models.StoreOwnerStore", b =>
-                {
-                    b.HasOne("Ecommerce_api.Models.Store", "Store")
-                        .WithMany("StoreOwnerStores")
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Ecommerce_api.Models.StoreOwner", "StoreOwner")
-                        .WithMany("StoreOwnerStores")
-                        .HasForeignKey("StoreOwnerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Store");
 
                     b.Navigation("StoreOwner");
                 });
@@ -1032,14 +1013,9 @@ namespace Ecommerce_api.Migrations
                     b.Navigation("OrderItems");
                 });
 
-            modelBuilder.Entity("Ecommerce_api.Models.Store", b =>
-                {
-                    b.Navigation("StoreOwnerStores");
-                });
-
             modelBuilder.Entity("Ecommerce_api.Models.StoreOwner", b =>
                 {
-                    b.Navigation("StoreOwnerStores");
+                    b.Navigation("Stores");
                 });
 #pragma warning restore 612, 618
         }

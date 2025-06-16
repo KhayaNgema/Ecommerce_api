@@ -4,6 +4,7 @@ using Ecommerce_api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ecommerce_api.Migrations
 {
     [DbContext(typeof(Ecommerce_apiDBContext))]
-    partial class Ecommerce_apiDBContextModelSnapshot : ModelSnapshot
+    [Migration("20250616092031_Re_UpdateStoresAndOwners")]
+    partial class Re_UpdateStoresAndOwners
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -488,7 +491,7 @@ namespace Ecommerce_api.Migrations
 
                     b.HasIndex("StoreId");
 
-                    b.ToTable("StoreOwnerStores");
+                    b.ToTable("StoreOwnerStore");
                 });
 
             modelBuilder.Entity("Ecommerce_api.Models.UserBaseModel", b =>

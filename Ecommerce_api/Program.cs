@@ -156,10 +156,15 @@ builder.Services.AddHangfire(config => config
 builder.Services.AddHangfireServer();
 
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+    });
+
 builder.Services.AddRazorPages();
 builder.Services.AddHttpContextAccessor();
-
 
 builder.Services.AddSwaggerGen(c =>
 {
@@ -234,6 +239,7 @@ app.Use(async (context, next) =>
     });
     await next.Invoke();
 });
+
 
 var defaultCulture = new CultureInfo("en-US");
 
