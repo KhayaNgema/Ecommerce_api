@@ -8,6 +8,11 @@ namespace Ecommerce_api.Models
         [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int OrderId { get; set; }
 
+        [Display(Name = "Store")]
+        public int StoreId { get; set; }
+        [ForeignKey("StoreId")]
+        public virtual Store Store { get; set; }
+
         [Display(Name = "Order number")]
         [ScaffoldColumn(false)]
         public string OrderNumber { get; set; }

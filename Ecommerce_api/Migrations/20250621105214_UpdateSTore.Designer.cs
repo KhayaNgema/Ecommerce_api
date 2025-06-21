@@ -4,6 +4,7 @@ using Ecommerce_api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ecommerce_api.Migrations
 {
     [DbContext(typeof(Ecommerce_apiDBContext))]
-    partial class Ecommerce_apiDBContextModelSnapshot : ModelSnapshot
+    [Migration("20250621105214_UpdateSTore")]
+    partial class UpdateSTore
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -238,30 +241,6 @@ namespace Ecommerce_api.Migrations
                     b.ToTable("DeviceInfos");
                 });
 
-            modelBuilder.Entity("Ecommerce_api.Models.Inventory", b =>
-                {
-                    b.Property<int>("InventoryId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("InventoryId"));
-
-                    b.Property<int>("Availability")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProductCount")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProductId")
-                        .HasColumnType("int");
-
-                    b.HasKey("InventoryId");
-
-                    b.HasIndex("ProductId");
-
-                    b.ToTable("Inventory");
-                });
-
             modelBuilder.Entity("Ecommerce_api.Models.Order", b =>
                 {
                     b.Property<int>("OrderId")
@@ -351,6 +330,9 @@ namespace Ecommerce_api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProductId"));
 
+                    b.Property<int>("Availability")
+                        .HasColumnType("int");
+
                     b.Property<string>("Barcode")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -371,6 +353,9 @@ namespace Ecommerce_api.Migrations
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("InStock")
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsSelected")
                         .HasColumnType("bit");
@@ -907,17 +892,6 @@ namespace Ecommerce_api.Migrations
                     b.Navigation("ModifiedBy");
 
                     b.Navigation("Store");
-                });
-
-            modelBuilder.Entity("Ecommerce_api.Models.Inventory", b =>
-                {
-                    b.HasOne("Ecommerce_api.Models.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Product");
                 });
 
             modelBuilder.Entity("Ecommerce_api.Models.Order", b =>

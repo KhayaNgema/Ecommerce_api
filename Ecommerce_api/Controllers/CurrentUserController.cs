@@ -17,7 +17,7 @@ namespace Ecommerce_api.Controllers
         }
 
         [Authorize(AuthenticationSchemes = "Bearer")]
-        [HttpGet("currentUser")]
+        [HttpGet("current_user")]
         public async Task<IActionResult> GetCurrentUser()
         {
             var user = await _userManager.GetUserAsync(User);
@@ -48,7 +48,6 @@ namespace Ecommerce_api.Controllers
                 ["Roles"] = roles
             };
 
-            // Add role-specific fields
             switch (user)
             {
                 case Customer customer:

@@ -12,12 +12,13 @@ using Ecommerce_api.Models;
 using Ecommerce_api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Ecommerce_api.ViewModels;
+using System.Web;
 
 namespace Ecommerce.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ProductsApiController : ControllerBase
+    public class ProductsController : ControllerBase
     {
         private readonly Ecommerce_apiDBContext _context;
         private readonly UserManager<UserBaseModel> _userManager;
@@ -27,7 +28,7 @@ namespace Ecommerce.Controllers
         private readonly EncryptionService _encryptionService;
 
 
-        public ProductsApiController(Ecommerce_apiDBContext context, UserManager<UserBaseModel> userManager,
+        public ProductsController(Ecommerce_apiDBContext context, UserManager<UserBaseModel> userManager,
             FileUploadService fileUploadService, RequestLogService requestLogService, IProductService productService,
             EncryptionService encryptionService)
         {
@@ -39,13 +40,17 @@ namespace Ecommerce.Controllers
             _encryptionService = encryptionService;
         }
 
-        [HttpGet("inventory")]
-        public async Task<IActionResult> GetInventory()
+        [HttpGet("products")]
+        public async Task<IActionResult> GetProducts(string storeId)
         {
+            var decodedStoreId = HttpUtility.UrlDecode(storeId);
+            var decryptedStoreId = _encryptionService.DecryptToInt(decodedStoreId);
+
             var items = await _context.Products
                 .Include(i => i.Category)
                 .Include(i => i.CreatedBy)
                 .Include(i => i.ModifiedBy)
+                .Where(i => i.StoreId == decryptedStoreId)
                 .OrderByDescending(i => i.CreatedDateTime)
                 .ToListAsync();
 
@@ -63,7 +68,6 @@ namespace Ecommerce.Controllers
                 sellingPrice = item.SellingPrice,
                 categoryId = item.CategoryId,
                 productImage = item.ProductImage,
-                inStock = item.InStock,
                 size = item.Size,
                 barcode = item.Barcode,
                 createdBy = new
@@ -82,8 +86,7 @@ namespace Ecommerce.Controllers
                 {
                     categoryId = _encryptionService.Encrypt(item.Category.CategoryId),
                     categoryName = item.Category.CategoryName,
-                },
-                availability = item.Availability
+                }
             });
 
 
@@ -91,9 +94,12 @@ namespace Ecommerce.Controllers
         }
 
         [HttpGet("categories")]
-        public async Task<IActionResult> GetCategories()
+        public async Task<IActionResult> GetCategories(string storeId)
         {
+            var decryptedStoreId = _encryptionService.DecryptToInt(storeId);
+
             var categories = await _context.Categories
+                .Where(c => c.StoreId == decryptedStoreId)
                 .Select(t => new
                 {
                     CategoryId = t.CategoryId.ToString(),
@@ -112,22 +118,23 @@ namespace Ecommerce.Controllers
             }));
         }
 
-        [HttpPost("create")]
+        [HttpPost("new_product")]
         [Authorize]
-        public async Task<IActionResult> CreateProduct([FromForm] ProductViewModel viewModel)
+        public async Task<IActionResult> CreateProduct([FromForm] ProductViewModel viewModel, [FromQuery] string storeId)
         {
             var user = User;
 
-            return await _productService.CreateProductAsync(viewModel, user);
+            return await _productService.CreateProductAsync(viewModel, user, storeId);
         }
 
-        [HttpPost("category")]
+        [HttpPost("new_category")]
         [Authorize]
         public async Task<IActionResult> CreateCategory([FromForm] CategoryViewModel viewModel)
         {
             try
             {
                 var user = await _userManager.GetUserAsync(User);
+
                 if (user == null)
                     return Unauthorized(new { success = false, message = "User is not authenticated." });
 
@@ -154,9 +161,5 @@ namespace Ecommerce.Controllers
                 return StatusCode(500, new { success = false, message = "Internal server error", error = ex.Message });
             }
         }
-
-
-
-
     }
 }

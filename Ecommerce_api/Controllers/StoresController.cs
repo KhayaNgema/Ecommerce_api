@@ -59,7 +59,7 @@ namespace Ecommerce_api.Controllers
 
 
         [Authorize]
-        [HttpGet("myStores")]
+        [HttpGet("my_stores")]
         public async Task<IActionResult> MyStores()
         {
             var user = await _userManager.GetUserAsync(User);
@@ -110,7 +110,7 @@ namespace Ecommerce_api.Controllers
 
 
         [Authorize]
-        [HttpGet("storeOwners")]
+        [HttpGet("store_owners")]
         public async Task<IActionResult> StoreOwners()
         {
             var storeOwners = await _context.StoreOwners
@@ -181,7 +181,7 @@ namespace Ecommerce_api.Controllers
 
 
         [Authorize]
-        [HttpGet("storeDetails")]
+        [HttpGet("store_details")]
         public async Task<IActionResult> StoreDetails(string storeId)
         {
             var decodedStoreId = HttpUtility.UrlDecode(storeId);
@@ -232,7 +232,7 @@ namespace Ecommerce_api.Controllers
 
 
         [Authorize]
-        [HttpPost("newStore")]
+        [HttpPost("new_store")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> CreateStore([FromForm] NewStoreViewModel viewModel)
         {
@@ -279,7 +279,7 @@ namespace Ecommerce_api.Controllers
 
 
         [Authorize]
-        [HttpPost("newStoreOwner")]
+        [HttpPost("new_store_owner")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> NewStoreOwner([FromForm] NewStoreOwnerViewModel viewModel)
         {
@@ -324,7 +324,7 @@ namespace Ecommerce_api.Controllers
                 viewModel.Province.ToString(),
                 viewModel.Zip_code,
                 viewModel.Country
-            }.Where(x => !string.IsNullOrWhiteSpace(x))),
+                }.Where(x => !string.IsNullOrWhiteSpace(x))),
                     Gender = viewModel.Gender,
                     IsDeleted = false
                 };

@@ -9,6 +9,11 @@ namespace Ecommerce_api.Models
         [Display(Name = "Category Id")]
         public int CategoryId { get; set; }
 
+        [Display(Name = "Store")]
+        public int StoreId { get; set; }
+        [ForeignKey("StoreId")]
+        public virtual Store Store { get; set; }
+
         [Required]
         [Display(Name = "Category name")]
         public string CategoryName { get; set; }

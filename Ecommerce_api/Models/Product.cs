@@ -9,6 +9,11 @@ namespace Ecommerce_api.Models
         [Display(Name = "Menu item Id")]
         public int ProductId { get; set; }
 
+        [Display(Name = "Store")]
+        public int StoreId { get; set; }
+        [ForeignKey("StoreId")]
+        public virtual Store Store { get; set; }
+
         [Required]
         [Display(Name = "Item name")]
         public string ProductName { get; set; }
@@ -28,6 +33,7 @@ namespace Ecommerce_api.Models
         [Required]
         [Display(Name = "Category")]
         public int CategoryId { get; set; }
+        public virtual Category Category { get; set; }
 
         [Required]
         [Display(Name = "Item image(s)")]
@@ -35,9 +41,6 @@ namespace Ecommerce_api.Models
 
         [Display(Name = "Is selected")]
         public bool IsSelected { get; set; }
-
-        [Display(Name = "Instock")]
-        public int InStock { get; set; }
 
         [Display(Name = "Size")]
         public string? Size { get; set; }
@@ -55,10 +58,6 @@ namespace Ecommerce_api.Models
         [ForeignKey("ModifiedById")]
         public string ModifiedById { get; set; }
         public virtual UserBaseModel ModifiedBy { get; set; }
-
-        public virtual Category Category { get; set; }
-
-        public Availability Availability { get; set; }
     }
     public enum Availability
     {

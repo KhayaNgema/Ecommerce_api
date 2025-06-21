@@ -1,9 +1,11 @@
 ﻿using Ecommerce.Services;
 using Ecommerce_api.Data;
+using Ecommerce_api.Interfaces;
 using Ecommerce_api.Models;
 using Ecommerce_api.ViewModels;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace Ecommerce_api.Services
@@ -14,20 +16,25 @@ namespace Ecommerce_api.Services
         private readonly UserManager<UserBaseModel> _userManager;
         private readonly FileUploadService _fileUploadService;
         private readonly RequestLogService _requestLogService;
+        private readonly EncryptionService _encryptionService;
 
         public ProductService(Ecommerce_apiDBContext context, UserManager<UserBaseModel> userManager,
-            FileUploadService fileUploadService, RequestLogService requestLogService)
+            FileUploadService fileUploadService, RequestLogService requestLogService,
+            EncryptionService encryptionService)
         {
             _context = context;
             _userManager = userManager;
             _fileUploadService = fileUploadService;
             _requestLogService = requestLogService;
+            _encryptionService = encryptionService;
         }
 
-        public async Task<IActionResult> CreateProductAsync(ProductViewModel viewModel, ClaimsPrincipal user)
+        public async Task<IActionResult> CreateProductAsync(ProductViewModel viewModel, ClaimsPrincipal user, string storeId)
         {
             try
             {
+                var decryptedStoreId = _encryptionService.DecryptToInt(storeId);
+
                 if (viewModel == null)
                     return new BadRequestObjectResult(new { success = false, message = "Product data is missing." });
 
@@ -35,17 +42,29 @@ namespace Ecommerce_api.Services
                 if (authenticatedUser == null)
                     return new UnauthorizedObjectResult(new { success = false, message = "User is not authenticated." });
 
+                var productExists = await _context.Products
+                    .AnyAsync(p => p.StoreId == decryptedStoreId &&
+                                   p.ProductName.ToLower() == viewModel.ProductName.ToLower());
+
+                if (productExists)
+                {
+                    return new ConflictObjectResult(new
+                    {
+                        success = false,
+                        message = $"A product with the name '{viewModel.ProductName}' already exists in this store."
+                    });
+                }
+
                 var product = new Product
                 {
+                    StoreId = decryptedStoreId,
                     ProductName = viewModel.ProductName,
                     Description = viewModel.Description,
                     Barcode = viewModel.Barcode,
                     CostPrice = viewModel.CostPrice,
                     SellingPrice = viewModel.SellingPrice,
                     IsSelected = false,
-                    InStock = 0,
                     Size = viewModel.Size,
-                    Availability = Availability.Unavailable,
                     CreatedById = authenticatedUser.Id,
                     ModifiedById = authenticatedUser.Id,
                     CreatedDateTime = DateTime.Now,
@@ -59,7 +78,17 @@ namespace Ecommerce_api.Services
                     product.ProductImage = uploadedPath;
                 }
 
-                _context.Products.Add(product);
+                _context.Add(product);
+                await _context.SaveChangesAsync();
+
+                var inventory = new Inventory
+                {
+                    ProductId = product.ProductId,
+                    ProductCount = 0,
+                    Availability = Availability.Unavailable
+                };
+
+                _context.Add(inventory);
                 await _context.SaveChangesAsync();
 
                 return new CreatedAtActionResult("GetInventory", "ProductsApi", new { id = product.ProductId }, new
@@ -87,6 +116,5 @@ namespace Ecommerce_api.Services
                 };
             }
         }
-
     }
 }

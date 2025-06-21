@@ -51,7 +51,7 @@ namespace Ecommerce_api.Controllers
             _encryptionService = encryptionService;
         }
 
-        [HttpPost]
+        [HttpPost("create_new_account")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> Register([FromForm] RegisterViewModel viewModel)
         {
