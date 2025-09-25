@@ -66,21 +66,8 @@ namespace Ecommerce.Controllers
                 productImage = item.ProductImage,
                 size = item.Size,
                 barcode = item.Barcode,
-                createdBy = new
-                {
-                    userId = _encryptionService.Encrypt(item.CreatedBy.Id),
-                    firstName = item.CreatedBy.FirstName,
-                    lastName = item.CreatedBy.LastName
-                },
-                modifiedBy = new
-                {
-                    userId = _encryptionService.Encrypt(item.ModifiedBy.Id),
-                    firstName = item.ModifiedBy.FirstName,
-                    lastName = item.ModifiedBy.LastName
-                },
                 category = new
                 {
-                    categoryId = _encryptionService.Encrypt(item.Category.CategoryId),
                     categoryName = item.Category.CategoryName,
                 }
             });
@@ -88,6 +75,7 @@ namespace Ecommerce.Controllers
 
             return Ok(result);
         }
+
 
         [HttpGet("categories")]
         public async Task<IActionResult> GetCategories()
@@ -112,6 +100,7 @@ namespace Ecommerce.Controllers
             }));
         }
 
+        [Authorize(Roles ="System Administrator")]
         [HttpPost("new_product")]
         [HttpPost]
         public async Task<IActionResult> CreateProduct([FromForm] ProductViewModel viewModel)
@@ -121,7 +110,7 @@ namespace Ecommerce.Controllers
             return await _productService.CreateProductAsync(viewModel, User);
         }
 
-
+        [Authorize(Roles = "System Administrator")]
         [HttpPost("new_category")]
         [Authorize]
         public async Task<IActionResult> CreateCategory([FromForm] CategoryViewModel viewModel)
@@ -158,7 +147,7 @@ namespace Ecommerce.Controllers
             }
         }
 
-
+        [Authorize(Roles = "System Administrator")]
         [HttpGet("get_product")]
         public async Task<IActionResult> GetProduct([FromQuery] string productId)
         {
@@ -186,7 +175,7 @@ namespace Ecommerce.Controllers
             return Ok(viewModel);
         }
 
-
+        [Authorize(Roles = "System Administrator")]
         [HttpPut("update_product")]
         public async Task<IActionResult> UpdateProduct([FromForm] UpdateProductViewModel viewModel, [FromQuery] string productId)
         {
@@ -246,6 +235,7 @@ namespace Ecommerce.Controllers
             }
         }
 
+        [Authorize(Roles = "System Administrator")]
         [HttpDelete("delete_product")]
         public async Task<IActionResult> DeleteProduct([FromQuery] string productId)
         {

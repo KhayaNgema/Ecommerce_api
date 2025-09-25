@@ -87,7 +87,18 @@ namespace Ecommerce.Controllers
                 return StatusCode(406, "Incorrect email or phone or password.");
 
             var roles = await _userManager.GetRolesAsync(user);
-            var role = roles.FirstOrDefault();
+            string role = null;
+
+            if (roles != null && roles.Any())
+            {
+                role = roles.FirstOrDefault();
+            }
+            else
+            {
+                role = "Customer";
+            }
+
+
             var token = GenerateJwtToken(user, role);
 
             return Ok(new
