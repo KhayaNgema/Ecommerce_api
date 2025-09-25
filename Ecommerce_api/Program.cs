@@ -54,6 +54,8 @@ var keyBytes = Convert.FromBase64String(key);
 var ivBytes = Convert.FromBase64String(iv);
 builder.Services.AddSingleton(new EncryptionConfiguration { Key = keyBytes, Iv = ivBytes });
 builder.Services.AddScoped<IEncryptionService, EncryptionService>();
+builder.Services.AddSwaggerGen();
+
 
 // Authorization
 builder.Services.AddAuthorization(options =>
@@ -249,10 +251,6 @@ app.UseRequestLocalization(new RequestLocalizationOptions
     SupportedCultures = new List<CultureInfo> { defaultCulture },
     SupportedUICultures = new List<CultureInfo> { defaultCulture }
 });
-
-app.UseStaticFiles();
-
-// Optional: Hangfire Dashboard
 
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {

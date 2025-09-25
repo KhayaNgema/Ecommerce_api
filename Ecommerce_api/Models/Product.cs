@@ -9,11 +9,6 @@ namespace Ecommerce_api.Models
         [Display(Name = "Menu item Id")]
         public int ProductId { get; set; }
 
-        [Display(Name = "Store")]
-        public int StoreId { get; set; }
-        [ForeignKey("StoreId")]
-        public virtual Store Store { get; set; }
-
         [Required]
         [Display(Name = "Item name")]
         public string ProductName { get; set; }
@@ -58,6 +53,10 @@ namespace Ecommerce_api.Models
         [ForeignKey("ModifiedById")]
         public string ModifiedById { get; set; }
         public virtual UserBaseModel ModifiedBy { get; set; }
+
+        public Availability Availability { get; set; }
+
+        public int InStock { get; set; }
     }
     public enum Availability
     {

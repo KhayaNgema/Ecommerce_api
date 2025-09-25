@@ -58,10 +58,6 @@ namespace Ecommerce_api.Controllers
                     response["AssociateNumber"] = associate.AssociateNumber;
                     response["StoreId"] = associate.StoreId;
                     break;
-
-                case StoreManager manager:
-                    response["StoreId"] = manager.StoreId;
-                    break;
             }
 
             return Ok(response);

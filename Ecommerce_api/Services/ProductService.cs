@@ -29,11 +29,10 @@ namespace Ecommerce_api.Services
             _encryptionService = encryptionService;
         }
 
-        public async Task<IActionResult> CreateProductAsync(ProductViewModel viewModel, ClaimsPrincipal user, string storeId)
+        public async Task<IActionResult> CreateProductAsync(ProductViewModel viewModel, ClaimsPrincipal user)
         {
             try
             {
-                var decryptedStoreId = _encryptionService.DecryptToInt(storeId);
 
                 if (viewModel == null)
                     return new BadRequestObjectResult(new { success = false, message = "Product data is missing." });
@@ -43,8 +42,7 @@ namespace Ecommerce_api.Services
                     return new UnauthorizedObjectResult(new { success = false, message = "User is not authenticated." });
 
                 var productExists = await _context.Products
-                    .AnyAsync(p => p.StoreId == decryptedStoreId &&
-                                   p.ProductName.ToLower() == viewModel.ProductName.ToLower());
+                    .AnyAsync(p => p.ProductName.ToLower() == viewModel.ProductName.ToLower());
 
                 if (productExists)
                 {
@@ -57,7 +55,6 @@ namespace Ecommerce_api.Services
 
                 var product = new Product
                 {
-                    StoreId = decryptedStoreId,
                     ProductName = viewModel.ProductName,
                     Description = viewModel.Description,
                     Barcode = viewModel.Barcode,
@@ -69,7 +66,9 @@ namespace Ecommerce_api.Services
                     ModifiedById = authenticatedUser.Id,
                     CreatedDateTime = DateTime.Now,
                     ModifiedDateTime = DateTime.Now,
-                    CategoryId = viewModel.CategoryId
+                    CategoryId = viewModel.CategoryId,
+                    Availability = viewModel.Availability,
+                    InStock = viewModel.InStock
                 };
 
                 if (viewModel.ProductImages != null && viewModel.ProductImages.Length > 0)

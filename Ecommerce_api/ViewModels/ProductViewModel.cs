@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Ecommerce_api.Models;
+using System.ComponentModel.DataAnnotations;
 
 namespace Ecommerce_api.ViewModels
 {
@@ -18,5 +19,9 @@ namespace Ecommerce_api.ViewModels
         public int CategoryId { get; set; }
 
         public IFormFile ProductImages { get; set; }
+
+        public Availability Availability { get; set; }
+
+        public int InStock { get; set; }
     }
 }

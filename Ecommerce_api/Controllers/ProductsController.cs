@@ -41,16 +41,12 @@ namespace Ecommerce.Controllers
         }
 
         [HttpGet("products")]
-        public async Task<IActionResult> GetProducts(string storeId)
+        public async Task<IActionResult> GetProducts()
         {
-            var decodedStoreId = HttpUtility.UrlDecode(storeId);
-            var decryptedStoreId = _encryptionService.DecryptToInt(decodedStoreId);
-
             var items = await _context.Products
                 .Include(i => i.Category)
                 .Include(i => i.CreatedBy)
                 .Include(i => i.ModifiedBy)
-                .Where(i => i.StoreId == decryptedStoreId)
                 .OrderByDescending(i => i.CreatedDateTime)
                 .ToListAsync();
 
@@ -94,12 +90,9 @@ namespace Ecommerce.Controllers
         }
 
         [HttpGet("categories")]
-        public async Task<IActionResult> GetCategories(string storeId)
+        public async Task<IActionResult> GetCategories()
         {
-            var decryptedStoreId = _encryptionService.DecryptToInt(storeId);
-
             var categories = await _context.Categories
-                .Where(c => c.StoreId == decryptedStoreId)
                 .Select(t => new
                 {
                     CategoryId = t.CategoryId.ToString(),
@@ -119,13 +112,14 @@ namespace Ecommerce.Controllers
         }
 
         [HttpPost("new_product")]
-        [Authorize]
-        public async Task<IActionResult> CreateProduct([FromForm] ProductViewModel viewModel, [FromQuery] string storeId)
+        [HttpPost]
+        public async Task<IActionResult> CreateProduct([FromForm] ProductViewModel viewModel)
         {
             var user = User;
 
-            return await _productService.CreateProductAsync(viewModel, user, storeId);
+            return await _productService.CreateProductAsync(viewModel, User);
         }
+
 
         [HttpPost("new_category")]
         [Authorize]

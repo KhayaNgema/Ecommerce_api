@@ -5,6 +5,6 @@ using System.Security.Claims;
 
 public interface IProductService
 {
-    Task<IActionResult> CreateProductAsync(ProductViewModel viewModel, ClaimsPrincipal user, string storeId);
+    Task<IActionResult> CreateProductAsync(ProductViewModel viewModel, ClaimsPrincipal user);
 }
 
