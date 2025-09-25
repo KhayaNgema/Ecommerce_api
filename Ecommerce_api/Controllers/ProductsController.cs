@@ -105,7 +105,8 @@ namespace Ecommerce.Controllers
                 return NotFound(new { success = false, message = "No categories found." });
             }
 
-            return Ok(categories.Select(c => new { 
+            return Ok(categories.Select(c => new
+            {
                 CategoryName = c.Name,
                 CategoryId = _encryptionService.Encrypt(c.CategoryId)
             }));
@@ -144,9 +145,10 @@ namespace Ecommerce.Controllers
                 _context.Categories.Add(category);
                 await _context.SaveChangesAsync();
 
-                return Ok(new { 
-                    success = true, 
-                    message = "Category created successfully.", 
+                return Ok(new
+                {
+                    success = true,
+                    message = "Category created successfully.",
                     category = category.CategoryName
                 });
             }
@@ -155,5 +157,129 @@ namespace Ecommerce.Controllers
                 return StatusCode(500, new { success = false, message = "Internal server error", error = ex.Message });
             }
         }
+
+
+        [HttpGet("get_product")]
+        public async Task<IActionResult> GetProduct([FromQuery] string productId)
+        {
+            var decryptedProductId = _encryptionService.DecryptToInt(productId);
+
+            var product = await _context.Products.FindAsync(decryptedProductId);
+
+            if (product == null)
+            {
+                return NotFound(new { success = false, message = "Product not found." });
+            }
+
+            var viewModel = new UpdateProductViewModel
+            {
+                ProductId = productId,
+                ProductName = product.ProductName,
+                Description = product.Description,
+                SellingPrice = product.SellingPrice,
+                CostPrice = product.CostPrice,
+                Barcode = product.Barcode,
+                Size = product.Size,
+                ProductImageUrl = product.ProductImage 
+            };
+
+            return Ok(viewModel);
+        }
+
+
+        [HttpPut("update_product")]
+        public async Task<IActionResult> UpdateProduct([FromForm] UpdateProductViewModel viewModel, [FromQuery] string productId)
+        {
+            {
+                try
+                {
+                    var decryptedProductId = _encryptionService.DecryptToInt(productId);
+
+                    var product = await _context.Products.FindAsync(decryptedProductId);
+                    if (product == null)
+                        return NotFound(new { success = false, message = "Product not found" });
+
+                    product.ProductName = viewModel.ProductName;
+                    product.Description = viewModel.Description;
+                    if (viewModel.SellingPrice.HasValue)
+                    {
+                        product.SellingPrice = viewModel.SellingPrice.Value;
+                    }
+
+                    if (viewModel.CostPrice.HasValue)
+                    {
+                        product.CostPrice = viewModel.CostPrice.Value;
+                    }
+                    product.Barcode = viewModel.Barcode;
+                    product.Size = viewModel.Size;
+
+                    if (viewModel.ProductImages != null && viewModel.ProductImages.Length > 0)
+                    {
+                        var uploadedPaths = await _fileUploadService.UploadFileAsync(viewModel.ProductImages);
+                        product.ProductImage = string.Join(',', uploadedPaths);
+                    }
+                    else if (!string.IsNullOrEmpty(viewModel.ProductImageUrl))
+                    {
+                        product.ProductImage = viewModel.ProductImageUrl;
+                    }
+
+                    await _context.SaveChangesAsync();
+
+                    return Ok(new { success = true, message = $"{viewModel.ProductName} details updated" });
+
+                }
+                catch (Exception ex)
+                {
+                    var innerMessage = ex.InnerException?.Message ?? "No inner exception";
+                    var stackTrace = ex.StackTrace ?? "No stack trace available";
+
+                    return StatusCode(500, new
+                    {
+                        success = false,
+                        message = "An error occurred while updating the product.",
+                        details = ex.Message,
+                        innerDetails = innerMessage,
+                        stackTrace = stackTrace
+                    });
+                }
+
+            }
+        }
+
+        [HttpDelete("delete_product")]
+        public async Task<IActionResult> DeleteProduct([FromQuery] string productId)
+        {
+            try
+            {
+                var decryptedProductId = _encryptionService.DecryptToInt(productId);
+
+                var product = await _context.Products.FindAsync(decryptedProductId);
+
+                if (product == null)
+                    return NotFound(new { success = false, message = "Product not found." });
+
+                _context.Remove(product);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { success = true, message = "Product deleted successfully." });
+            }
+
+            catch (Exception ex)
+            {
+                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
+                var stackTrace = ex.StackTrace ?? "No stack trace available";
+
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "An error occurred while updating the product.",
+                    details = ex.Message,
+                    innerDetails = innerMessage,
+                    stackTrace = stackTrace
+                });
+            }
+        }
     }
+
 }
+

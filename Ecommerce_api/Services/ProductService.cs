@@ -80,16 +80,6 @@ namespace Ecommerce_api.Services
                 _context.Add(product);
                 await _context.SaveChangesAsync();
 
-                var inventory = new Inventory
-                {
-                    ProductId = product.ProductId,
-                    ProductCount = 0,
-                    Availability = Availability.Unavailable
-                };
-
-                _context.Add(inventory);
-                await _context.SaveChangesAsync();
-
                 return new CreatedAtActionResult("GetInventory", "ProductsApi", new { id = product.ProductId }, new
                 {
                     success = true,

@@ -40,6 +40,4 @@ public class Ecommerce_apiDBContext : IdentityDbContext<UserBaseModel>
 
     public DbSet<Ecommerce_api.Models.UserBaseModel> Users { get; set; }
 
-    public DbSet<Ecommerce_api.Models.Inventory> Inventory { get; set; }
-
 }
